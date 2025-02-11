@@ -7,7 +7,7 @@ from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_jwt_extended import create_access_token
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 
 api = Blueprint('api', __name__)
@@ -15,6 +15,7 @@ api = Blueprint('api', __name__)
 # Allow CORS requests to this API
 CORS(api)
 
+delete_tokens = set() 
 
 @api.route('/hello', methods=['POST', 'GET'])
 def handle_hello():
@@ -72,10 +73,21 @@ def login():
     else:
         return jsonify({"message":"Invalid user or password, try again."}), 400
     
-@api.route('/myspace', methods = ['GET'])
+@api.route('/logout', methods=['POST'])
+@jwt_required()
+def logout():
+    jti = get_jwt()["jti"]  
+    delete_tokens.add(jti)   
+    return jsonify({"msg": "You have been logged-out"}), 200
+
+@api.route('/myspace', methods=['GET'])
 @jwt_required()
 def private():
+    jti = get_jwt()["jti"]
+    if jti in delete_tokens:
+        return jsonify({"msg": "Token has been revoked."}), 401  
+
     email = get_jwt_identity()
-    user_exists = User.query.filtery_by(email = email).first()
+    user_exists = User.query.filter_by(email=email).first()
     return jsonify(user_exists.serialize()), 200
 
