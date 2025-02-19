@@ -5,7 +5,6 @@ from flask import Flask, request, jsonify, url_for, Blueprint
 from api.models import db, User
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -32,7 +31,7 @@ def sign_up():
     username = data.get('username')
     email = data.get('email')
     password = data.get('password')
-    user_exists = User.query.filtery_by(email = email).first()
+    user_exists = User.query.filter_by(email = email).first()
 
     if user_exists is None:
         password_hash =  generate_password_hash(password)
@@ -53,7 +52,7 @@ def sign_up():
 
         return jsonify({
             "user": new_user.serialize(),
-            "message": "You have registered! Redirecting to log-in page"
+            "message": "You have registered! Redirecting to log-in page" 
         }), 200
     else:
         return jsonify({"message": "Email already in use. Try using another one."}), 400
@@ -63,15 +62,17 @@ def login():
     data = request.json
     email = data.get('email')
     password = data.get('password')
-    user_exists = User.query.filtery_by(email = email, password = password).first()
+    user_exists = User.query.filter_by(email = email).first()
 
     if user_exists:
         valid_password = check_password_hash(user_exists.password, password)
         if valid_password:
-            access_token = create_access_token(identity = user_exists.email)
-        return jsonify({"token": access_token}), 200    
+            access_token = create_access_token(identity=user_exists.email)
+            return jsonify({"token": access_token}), 200  # Retorno correcto aquí
+        else:
+            return jsonify({"message": "Invalid password."}), 401 # Retorno en caso de contraseña incorrecta
     else:
-        return jsonify({"message":"Invalid user or password, try again."}), 400
+        return jsonify({"message": "Invalid user."}), 404
     
 @api.route('/logout', methods=['POST'])
 @jwt_required()
